@@ -1,84 +1,517 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stream URL Converter — MPD / M3U8 / JioTV / JHS</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stream Tools — Cookie Expiry + URL Converter</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; min-height: 100vh; }
-  .container { max-width: 1100px; margin: 0 auto; }
-  h1 { font-size: 1.6rem; margin-bottom: 6px; color: #38bdf8; }
-  .subtitle { color: #94a3b8; margin-bottom: 24px; font-size: 0.9rem; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-  .panel { background: #1e293b; border-radius: 10px; padding: 16px; border: 1px solid #334155; }
-  .panel h2 { font-size: 1rem; margin-bottom: 10px; color: #cbd5e1; }
-  textarea { width: 100%; min-height: 320px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 0.78rem; resize: vertical; line-height: 1.5; }
-  textarea:focus { outline: none; border-color: #38bdf8; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(circle at top, #1e293b 0%, #0f172a 60%);
+    color: #e2e8f0;
+    padding: 40px 16px;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+
+  .page-title {
+    margin: 0 0 6px;
+    font-size: 1.6rem;
+    background: linear-gradient(90deg,#38bdf8,#a78bfa,#f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin-bottom: 22px;
+  }
+
+  /* ---- side‑by‑side layout ---- */
+  .tools-row {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .tools-row > .card {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  @media (max-width: 1000px) {
+    .tools-row {
+      flex-direction: column;
+    }
+  }
+
+  .card {
+    background: rgba(30, 41, 59, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 18px;
+    padding: 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    backdrop-filter: blur(12px);
+  }
+
+  h2 { font-size: 1.2rem; margin: 0 0 10px; color: #cbd5e1; }
+  h3 { font-size: 1rem; margin-bottom: 10px; color: #cbd5e1; }
+
+  textarea {
+    width: 100%;
+    min-height: 120px;
+    background: #0b1220;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 0.85rem;
+    resize: vertical;
+    outline: none;
+    transition: border 0.2s;
+    line-height: 1.5;
+  }
+  textarea:focus { border-color: #38bdf8; }
+  #streamInput, #streamOutput { min-height: 320px; font-size: 0.78rem; }
+
+  .row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
   .buttons { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-  button { background: #38bdf8; color: #0f172a; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.88rem; transition: background 0.15s; }
-  button:hover { background: #0ea5e9; }
-  button.secondary { background: #334155; color: #e2e8f0; }
-  button.secondary:hover { background: #475569; }
-  .status { margin-top: 16px; padding: 12px; border-radius: 8px; font-size: 0.85rem; display: none; }
+
+  button {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 18px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.2s, background 0.15s;
+    background: linear-gradient(135deg,#38bdf8,#6366f1);
+    color: white;
+  }
+  button.secondary {
+    background: linear-gradient(135deg,#334155,#1e293b);
+    border: 1px solid #475569;
+    color: #e2e8f0;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:active { transform: scale(0.98); }
+
+  .hint {
+    margin-top: 14px;
+    font-size: 0.78rem;
+    color: #64748b;
+    line-height: 1.5;
+  }
+  .hint code, .info code {
+    background: #0b1220;
+    padding: 2px 6px;
+    border-radius: 5px;
+    color: #7dd3fc;
+    font-size: 0.75rem;
+    word-break: break-all;
+  }
+
+  .result {
+    margin-top: 26px;
+    display: none;
+    animation: fade 0.3s ease;
+  }
+  .result.show { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px);} to {opacity:1;transform:none;} }
+
+  .status {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    display: none;
+  }
   .status.success { display: block; background: #064e3b; color: #6ee7b7; border: 1px solid #10b981; }
   .status.error   { display: block; background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+
+  .cookie-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 18px;
+  }
+  .cookie-status.valid { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); }
+  .cookie-status.expired { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.4); }
+  .cookie-status.warn { background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.4); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+  .expiry-big {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .countdown {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    font-family: monospace;
+  }
+
+  .fields { margin-top: 22px; display: grid; gap: 12px; }
+  .field {
+    background: #0b1220;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    font-size: 0.83rem;
+  }
+  .field .label {
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .field .value {
+    color: #7dd3fc;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    word-break: break-all;
+    text-align: right;
+    flex: 1;
+  }
+  .field .value.empty { color: #475569; font-style: italic; }
+
+  .copy-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0 4px;
+    flex: 0 0 auto;
+    min-width: auto;
+    font-size: 0.8rem;
+  }
+  .copy-btn:hover { color: #38bdf8; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #334155;
+  }
+
   .output-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-  .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
   .badge.mpd   { background: #7c3aed; color: #fff; }
   .badge.m3u8  { background: #10b981; color: #fff; }
   .badge.jio   { background: #f59e0b; color: #0f172a; }
   .badge.jhs   { background: #ec4899; color: #fff; }
   .badge.aiv   { background: #06b6d4; color: #0f172a; }
   .badge.other { background: #475569; color: #fff; }
-  .info { margin-top: 20px; background: #1e293b; border-radius: 10px; padding: 16px; border: 1px solid #334155; font-size: 0.85rem; color: #94a3b8; }
-  .info code { background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8; font-size: 0.78rem; word-break: break-all; }
+
+  .info {
+    margin-top: 20px;
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #334155;
+    font-size: 0.85rem;
+    color: #94a3b8;
+  }
   label { display: block; font-size: 0.85rem; margin-bottom: 6px; color: #94a3b8; }
   .detect { margin-top: 8px; font-size: 0.82rem; color: #cbd5e1; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Stream URL Converter</h1>
-  <p class="subtitle">Produces: <code>URL|Cookie=...&drmScheme=clearkey&drmLicense=keyId:key</code></p>
+  <h1 class="page-title">🧰 Stream Tools — Cookie Expiry + URL Converter</h1>
+  <p class="subtitle">Both tools combined into one page. Check cookie expiry and convert stream URLs to player format.</p>
 
-  <div class="grid">
-    <div class="panel">
-      <h2>📥 Input</h2>
-      <label>Paste M3U, JSON, KODIPROP, or plain URL:</label>
-      <textarea id="input" placeholder="Paste any format..."></textarea>
-      <div class="buttons">
-        <button onclick="convert()">⚡ Convert</button>
-        <button class="secondary" onclick="clearAll()">Clear</button>
-        <button class="secondary" onclick="pasteExample()">Load Example</button>
+  <!-- ===== SIDE‑BY‑SIDE ROW ===== -->
+  <div class="tools-row">
+
+    <!-- ========== COOKIE EXPIRY CHECKER ========== -->
+    <section class="card">
+      <h2>🍪 Cookie Expiry Checker</h2>
+      <div class="subtitle">Paste a JioTV MPD link, a <code>__hdnea__</code> cookie, or just a unix timestamp.</div>
+
+      <textarea id="cookieInput" placeholder="Examples:
+https://jiotvmblive.cdn.jio.com/bpk-tv/SonyMAX_MOB/WDVLive/index.mpd|Cookie=__hdnea__=st=1789268410~exp=1789290010~acl=/*~hmac=...&drmScheme=clearkey&drmLicense=KEYID:KEY
+
+1789290010
+
+__hdnea__=st=1789268410~exp=1789290010~acl=/*~hmac=..."></textarea>
+
+      <div class="row">
+        <button onclick="checkCookieExpiry()">Check Expiry</button>
+        <button class="secondary" onclick="clearCookieChecker()">Clear</button>
       </div>
-      <div class="detect" id="detect"></div>
-      <div id="status" class="status"></div>
-    </div>
 
-    <div class="panel">
-      <h2>📤 Output <span id="fmtBadge"></span></h2>
-      <label>Converted URL:</label>
-      <textarea id="output" readonly placeholder="Result will appear here..."></textarea>
-      <div class="output-actions">
-        <button onclick="copyOutput()">📋 Copy URL</button>
-        <button class="secondary" onclick="copyM3U()">📋 Copy as M3U</button>
-        <button class="secondary" onclick="copyJSON()">📋 Copy as JSON</button>
+      <div class="hint">
+        Auto-checks on paste. The <code>exp=</code> value inside the cookie is used. Times shown in <b>IST (UTC+5:30)</b>.
       </div>
-    </div>
-  </div>
 
-  <div class="info">
-    <strong>Output rules:</strong><br>
-    • JioTV → <code>URL|Cookie=__hdnea__=...&drmScheme=clearkey&drmLicense=...</code><br>
-    • AIV/MPD → <code>URL|drmScheme=clearkey&drmLicense=...</code><br>
-    • Hotstar → <code>URL?|cookie=hdntl=...&referer=...&origin=...&drmScheme=clearkey&drmLicense=...</code><br>
-    • <code>user-agent</code> always stripped
-  </div>
+      <div class="result" id="cookieResult">
+        <div class="cookie-status" id="cookieStatus">
+          <span class="dot"></span><span id="cookieStatusText"></span>
+        </div>
+
+        <div class="expiry-big" id="cookieExpiryBig">—</div>
+        <div class="countdown" id="cookieCountdown"></div>
+
+        <div class="fields" id="cookieFields"></div>
+      </div>
+    </section>
+
+    <!-- ========== STREAM URL CONVERTER ========== -->
+    <section class="card">
+      <h2>🔄 Stream URL Converter <span id="streamFmtBadge"></span></h2>
+      <p class="subtitle">Produces: <code>URL|Cookie=...&drmScheme=clearkey&drmLicense=keyId:key</code></p>
+
+      <div class="grid">
+        <div class="panel">
+          <h3>📥 Input</h3>
+          <label>Paste M3U, JSON, KODIPROP, or plain URL:</label>
+          <textarea id="streamInput" placeholder="Paste any format..."></textarea>
+          <div class="buttons">
+            <button onclick="convertStream()">⚡ Convert</button>
+            <button class="secondary" onclick="clearConverter()">Clear</button>
+            <button class="secondary" onclick="pasteExample()">Load Example</button>
+          </div>
+          <div class="detect" id="streamDetect"></div>
+          <div id="streamStatus" class="status"></div>
+        </div>
+
+        <div class="panel">
+          <h3>📤 Output</h3>
+          <label>Converted URL:</label>
+          <textarea id="streamOutput" readonly placeholder="Result will appear here..."></textarea>
+          <div class="output-actions">
+            <button onclick="copyOutput()">📋 Copy URL</button>
+            <button class="secondary" onclick="copyM3U()">📋 Copy as M3U</button>
+            <button class="secondary" onclick="copyJSON()">📋 Copy as JSON</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="info">
+        <strong>Output rules:</strong><br>
+        • JioTV → <code>URL|Cookie=__hdnea__=...&drmScheme=clearkey&drmLicense=...</code><br>
+        • AIV/MPD → <code>URL|drmScheme=clearkey&drmLicense=...</code><br>
+        • Hotstar → <code>URL?|cookie=hdntl=...&referer=...&origin=...&drmScheme=clearkey&drmLicense=...</code><br>
+        • <code>user-agent</code> always stripped
+      </div>
+    </section>
+
+  </div><!-- /tools-row -->
 </div>
 
 <script>
+/* ============================================================
+   COOKIE EXPIRY CHECKER
+   ============================================================ */
+const IST_TZ = 'Asia/Kolkata';
+
+function formatExpiry(ts) {
+  if (!ts || isNaN(ts)) return "";
+  const d = new Date(ts * 1000);
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: IST_TZ,
+    day: 'numeric', month: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit',
+    hour12: true
+  }).formatToParts(d);
+
+  const get = t => parts.find(p => p.type === t)?.value || '';
+  const period = get('dayPeriod').toUpperCase();
+  return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}:${get('second')} ${period} IST`;
+}
+
+function extractExp(text) {
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (/^\d{9,11}$/.test(trimmed)) return parseInt(trimmed, 10);
+  const m = text.match(/exp=(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function extractCookie(text) {
+  const m = text.match(/(__hdnea__=[^&\s|?]+)/);
+  return m ? m[1] : "";
+}
+
+function extractStreamUrl(text) {
+  const m = text.match(/^(https?:\/\/[^|\s]+\.mpd)/m);
+  return m ? m[1] : "";
+}
+
+function extractDrm(text) {
+  const m = text.match(/drmLicense=([a-fA-F0-9]+):([a-fA-F0-9]+)/);
+  return m ? { key_id: m[1], key: m[2] } : { key_id: "", key: "" };
+}
+
+function humanDuration(sec) {
+  if (sec <= 0) return "";
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const bits = [];
+  if (d) bits.push(d + 'd');
+  if (h) bits.push(h + 'h');
+  if (m) bits.push(m + 'm');
+  bits.push(s + 's');
+  return bits.join(' ');
+}
+
+let cookieCountdownTimer = null;
+
+function checkCookieExpiry() {
+  const raw = document.getElementById('cookieInput').value;
+  const exp = extractExp(raw);
+  const resultEl = document.getElementById('cookieResult');
+  const statusEl = document.getElementById('cookieStatus');
+  const statusText = document.getElementById('cookieStatusText');
+  const expiryBig = document.getElementById('cookieExpiryBig');
+  const countdownEl = document.getElementById('cookieCountdown');
+  const fieldsEl = document.getElementById('cookieFields');
+
+  if (cookieCountdownTimer) {
+    clearInterval(cookieCountdownTimer);
+    cookieCountdownTimer = null;
+  }
+
+  if (!exp) {
+    resultEl.classList.remove('show');
+    return;
+  }
+
+  const cookie = extractCookie(raw);
+  const streamUrl = extractStreamUrl(raw);
+  const drm = extractDrm(raw);
+  const expiryStr = formatExpiry(exp);
+
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = exp - now;
+
+  statusEl.className = 'cookie-status';
+  if (remaining <= 0) {
+    statusEl.classList.add('expired');
+    statusText.textContent = 'EXPIRED';
+  } else if (remaining < 300) {
+    statusEl.classList.add('warn');
+    statusText.textContent = 'Expiring soon';
+  } else {
+    statusEl.classList.add('valid');
+    statusText.textContent = 'Valid';
+  }
+
+  expiryBig.textContent = expiryStr;
+
+  function tick() {
+    const r = exp - Math.floor(Date.now() / 1000);
+    if (r <= 0) {
+      countdownEl.textContent = 'Expired ' + humanDuration(-r) + ' ago';
+      statusEl.className = 'cookie-status expired';
+      statusText.textContent = 'EXPIRED';
+      if (cookieCountdownTimer) {
+        clearInterval(cookieCountdownTimer);
+        cookieCountdownTimer = null;
+      }
+    } else {
+      countdownEl.textContent = 'Expires in ' + humanDuration(r);
+    }
+  }
+
+  tick();
+  if (remaining > 0) {
+    cookieCountdownTimer = setInterval(tick, 1000);
+  }
+
+  const rows = [
+    ['Unix Timestamp', String(exp)],
+    ['Cookie Expiry', expiryStr],
+    ['Stream URL', streamUrl],
+    ['Cookie', cookie],
+    ['Key ID', drm.key_id],
+    ['Key', drm.key],
+  ];
+
+  fieldsEl.innerHTML = rows.map(([label, val]) => {
+    const empty = !val;
+    const enc = empty ? '' : encodeURIComponent(val).replace(/'/g, '%27');
+    return `
+      <div class="field">
+        <div class="label">${label}</div>
+        <div class="value ${empty ? 'empty' : ''}">${empty ? '—' : escapeHtml(val)}</div>
+        ${empty ? '' : `<button class="copy-btn" onclick="copyText(this, '${enc}')">Copy</button>`}
+      </div>`;
+  }).join('');
+
+  resultEl.classList.add('show');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[c]));
+}
+
+function copyText(btn, encoded) {
+  const text = decodeURIComponent(encoded);
+  navigator.clipboard.writeText(text).then(() => {
+    const old = btn.textContent;
+    btn.textContent = '✓';
+    setTimeout(() => btn.textContent = old, 1200);
+  });
+}
+
+function clearCookieChecker() {
+  document.getElementById('cookieInput').value = '';
+  document.getElementById('cookieResult').classList.remove('show');
+  if (cookieCountdownTimer) {
+    clearInterval(cookieCountdownTimer);
+    cookieCountdownTimer = null;
+  }
+}
+
+document.getElementById('cookieInput').addEventListener('paste', () => {
+  setTimeout(checkCookieExpiry, 30);
+});
+
+document.getElementById('cookieInput').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') checkCookieExpiry();
+});
+
+/* ============================================================
+   STREAM URL CONVERTER
+   ============================================================ */
 const FILTERED = ['user-agent', 'useragent'];
 const isFiltered = k => FILTERED.includes(k.toLowerCase());
 
@@ -103,14 +536,17 @@ function splitPipeParams(rawUrl, onParam) {
   return rawUrl.slice(0, idx);
 }
 
-function convert() {
-  const input = document.getElementById('input').value.trim();
-  const status = document.getElementById('status');
-  const output = document.getElementById('output');
-  const detectEl = document.getElementById('detect');
-  const fmtBadge = document.getElementById('fmtBadge');
+function convertStream() {
+  const input = document.getElementById('streamInput').value.trim();
+  const status = document.getElementById('streamStatus');
+  const output = document.getElementById('streamOutput');
+  const detectEl = document.getElementById('streamDetect');
+  const fmtBadge = document.getElementById('streamFmtBadge');
 
-  if (!input) { showStatus('Please paste some input first.', 'error'); return; }
+  if (!input) {
+    showStreamStatus('Please paste some input first.', 'error');
+    return;
+  }
 
   try {
     let url = '';
@@ -121,24 +557,34 @@ function convert() {
 
     const pushExtra = (k, val, raw) => {
       const lk = k.toLowerCase();
-      if (lk === 'cookie') { if (!cookie) cookie = val; return; }
+      if (lk === 'cookie') {
+        if (!cookie) cookie = val;
+        return;
+      }
       if (lk === 'drmlicense' && !keyId) {
         const [kid, kk] = val.split(':');
-        keyId = kid || ''; key = kk || '';
+        keyId = kid || '';
+        key = kk || '';
         return;
       }
       if (lk === 'drmscheme' || isFiltered(lk)) return;
-      if (!extra.some(e => e.toLowerCase().startsWith(lk + '='))) extra.push(raw || (k + '=' + val));
+      if (!extra.some(e => e.toLowerCase().startsWith(lk + '='))) {
+        extra.push(raw || (k + '=' + val));
+      }
     };
 
     // JSON
     if (input.startsWith('{') || input.startsWith('[')) {
       let jsonStr = input.replace(/,\s*([}\]])/g, '$1');
       let data;
-      try { data = JSON.parse(jsonStr); }
-      catch (e) {
-        try { data = JSON.parse('[' + jsonStr + ']'); }
-        catch (e2) { throw new Error('Invalid JSON: ' + e.message); }
+      try {
+        data = JSON.parse(jsonStr);
+      } catch (e) {
+        try {
+          data = JSON.parse('[' + jsonStr + ']');
+        } catch (e2) {
+          throw new Error('Invalid JSON: ' + e.message);
+        }
       }
       const obj = Array.isArray(data) ? data[0] : data;
       url = obj.stream_url || obj.url || '';
@@ -152,7 +598,8 @@ function convert() {
       const lic = input.match(/license_key=([^\s\r\n|&]+)/i);
       if (lic) {
         const [kid, kk] = lic[1].split(':');
-        keyId = kid || ''; key = kk || '';
+        keyId = kid || '';
+        key = kk || '';
       }
       const ck1 = input.match(/http-cookie=([^\r\n]+)/i);
       if (ck1) cookie = ck1[1].trim();
@@ -171,57 +618,39 @@ function convert() {
 
     if (!url) throw new Error('Could not find a stream URL in the input.');
 
-    // Detect format from URL
     const fmt = detectFormat(url);
-
-    // Build query
     const params = [];
 
-    // Jio & AIV get clean path; Hotstar keeps the trailing '?'
     if (fmt.label === 'JHS' && !url.endsWith('?')) {
       url = url + '?';
     } else if (fmt.label !== 'JHS') {
       url = url.replace(/\?$/, '');
     }
 
-    // Cookie
     if (cookie) {
       params.push((fmt.cookieKey || 'Cookie') + '=' + cookie);
     }
 
-    // Referer / Origin (kept from input)
     extra.forEach(p => {
       const k = p.split('=')[0].toLowerCase();
       if (k === 'cookie' || isFiltered(k)) return;
       if (!params.some(x => x.toLowerCase().startsWith(k + '='))) params.push(p);
     });
 
-    // DRM last
     if (keyId && key) {
       params.push('drmScheme=clearkey');
       params.push('drmLicense=' + keyId + ':' + key);
     }
 
-    // Glue logic:
-    // - If URL already ends with '?' → use '|' (no double '?')
-    // - Else → use '|'  (never add '?|' unless nothing is there)
-    let glue;
-    if (url.endsWith('?')) {
-      glue = '|';
-    } else if (url.includes('?')) {
-      glue = '|';
-    } else {
-      glue = '|';
-    }
-
+    const glue = '|';
     const result = params.length ? url + glue + params.join('&') : url;
 
     output.value = result;
     fmtBadge.innerHTML = `<span class="badge ${fmt.cls}">${fmt.label}</span>`;
     detectEl.textContent = `Detected: ${fmt.label} · cookie ${cookie ? 'found' : 'none'}`;
-    showStatus('✅ Converted!', 'success');
+    showStreamStatus('✅ Converted!', 'success');
   } catch (err) {
-    showStatus('❌ ' + err.message, 'error');
+    showStreamStatus('❌ ' + err.message, 'error');
     output.value = '';
     fmtBadge.innerHTML = '';
     detectEl.textContent = '';
@@ -229,14 +658,14 @@ function convert() {
 }
 
 function copyOutput() {
-  const out = document.getElementById('output');
-  if (!out.value) return showStatus('Nothing to copy.', 'error');
-  navigator.clipboard.writeText(out.value).then(() => showStatus('📋 Copied URL!', 'success'));
+  const out = document.getElementById('streamOutput');
+  if (!out.value) return showStreamStatus('Nothing to copy.', 'error');
+  navigator.clipboard.writeText(out.value).then(() => showStreamStatus('📋 Copied URL!', 'success'));
 }
 
 function copyM3U() {
-  const out = document.getElementById('output').value;
-  if (!out) return showStatus('Nothing to copy.', 'error');
+  const out = document.getElementById('streamOutput').value;
+  if (!out) return showStreamStatus('Nothing to copy.', 'error');
 
   const idx = out.indexOf('|');
   const urlPart = idx > -1 ? out.slice(0, idx) : out;
@@ -263,12 +692,12 @@ function copyM3U() {
   if (ck) m3u += '#EXTVLCOPT:http-cookie=' + ck[1] + '\n';
   m3u += urlPart;
 
-  navigator.clipboard.writeText(m3u).then(() => showStatus('📋 Copied as M3U!', 'success'));
+  navigator.clipboard.writeText(m3u).then(() => showStreamStatus('📋 Copied as M3U!', 'success'));
 }
 
 function copyJSON() {
-  const out = document.getElementById('output').value;
-  if (!out) return showStatus('Nothing to copy.', 'error');
+  const out = document.getElementById('streamOutput').value;
+  if (!out) return showStreamStatus('Nothing to copy.', 'error');
 
   const idx = out.indexOf('|');
   const urlPart = idx > -1 ? out.slice(0, idx) : out;
@@ -288,19 +717,19 @@ function copyJSON() {
   };
 
   navigator.clipboard.writeText(JSON.stringify(obj, null, 2))
-    .then(() => showStatus('📋 Copied as JSON!', 'success'));
+    .then(() => showStreamStatus('📋 Copied as JSON!', 'success'));
 }
 
-function clearAll() {
-  document.getElementById('input').value = '';
-  document.getElementById('output').value = '';
-  document.getElementById('status').className = 'status';
-  document.getElementById('detect').textContent = '';
-  document.getElementById('fmtBadge').innerHTML = '';
+function clearConverter() {
+  document.getElementById('streamInput').value = '';
+  document.getElementById('streamOutput').value = '';
+  document.getElementById('streamStatus').className = 'status';
+  document.getElementById('streamDetect').textContent = '';
+  document.getElementById('streamFmtBadge').innerHTML = '';
 }
 
 function pasteExample() {
-  document.getElementById('input').value =
+  document.getElementById('streamInput').value =
 `#EXTINF:-1 tvg-id="143" tvg-name="CNBC TV18 Prime" tvg-logo="https://jiotv.catchup.cdn.jio.com/dare_images/images/CNBCTV18Prime.png" group-title="English",CNBC TV18 Prime
 #KODIPROP:inputstream=inputstream.adaptive
 #KODIPROP:inputstream.adaptive.manifest_type=mpd
@@ -311,13 +740,32 @@ function pasteExample() {
 https://jiotvmblive.cdn.jio.com/bpk-tv/CNBCTV18Prime_MOB/WDVLive/index.mpd`;
 }
 
-function showStatus(msg, type) {
-  const s = document.getElementById('status');
+function showStreamStatus(msg, type) {
+  const s = document.getElementById('streamStatus');
   s.textContent = msg;
   s.className = 'status ' + type;
-  if (type === 'success') setTimeout(() => s.className = 'status', 3000);
+  if (type === 'success') {
+    setTimeout(() => s.className = 'status', 3000);
+  }
 }
 </script>
- <script async src="https://pl31358401.profitableratecpmnetwork.com/a3/81/41/a38141b4ff99f6ef8dbf9dc5f76bd86b.js"></script>
+
+<!-- ===== Ad Script ===== -->
+<script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
+<script type="text/javascript">
+  if (typeof aclib !== 'undefined' && aclib.runPop) {
+    aclib.runPop({
+      zoneId: '12185702',
+    });
+  } else {
+    window.addEventListener('load', function() {
+      if (typeof aclib !== 'undefined' && aclib.runPop) {
+        aclib.runPop({
+          zoneId: '12185702',
+        });
+      }
+    });
+  }
+</script>
 </body>
 </html>
