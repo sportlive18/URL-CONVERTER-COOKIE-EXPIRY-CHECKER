@@ -55,10 +55,3 @@ The tool is a single HTML file (`index.html`) with embedded styles and scripts. 
 - To change the default example data, edit the `EXAMPLE` object inside the `<script>` tag.
 - If your DRM parameter names differ, adjust the `buildFullUrl` and `parseFullUrl` functions accordingly.
 
-## 📄 License
-
-Feel free to use, modify, and distribute this tool as needed.
-
----
-
-*Built with ❤️ for the streaming community.*
